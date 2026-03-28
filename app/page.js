@@ -20,6 +20,21 @@ const DEFAULT_CONFIG = {
 
 const ADMIN_PASSWORD = "1234";
 
+// ─── ESP32 Relay Control ───
+async function sendToEsp32(ip, command) {
+  if (!ip || ip === "192.168.1.100") return; // skip if default/unconfigured
+  try {
+    const url = `http://${ip}/${command}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    await fetch(url, { signal: controller.signal, mode: "no-cors" });
+    clearTimeout(timeout);
+    console.log(`[ESP32] Sent /${command} to ${ip}`);
+  } catch (e) {
+    console.warn(`[ESP32] Failed to reach ${ip}: ${e.message}`);
+  }
+}
+
 /* ════════════════════════════════════════════════════════════════
    GLOBAL STYLES
    ════════════════════════════════════════════════════════════════ */
@@ -262,6 +277,7 @@ function UserDash({ user, config, onLogout, toast }) {
       }
     }
     if (now >= endTime) {
+      sendToEsp32(config.esp32Ip, "off");
       DB.setMachine({ running: false });
       toast("✅ Wash cycle complete!", "success");
       alertFired.current = false;
@@ -287,6 +303,7 @@ function UserDash({ user, config, onLogout, toast }) {
   const startWash = async () => {
     if (machine?.running) return;
     const c = config.washCycles[cycle];
+    await sendToEsp32(config.esp32Ip, "on");
     await DB.setMachine({
       running: true, userId: user.id, userName: user.name,
       cycleName: c.name, startTime: Date.now(), durationMs: c.minutes * 60000,
@@ -297,6 +314,7 @@ function UserDash({ user, config, onLogout, toast }) {
 
   const stopWash = async () => {
     if (!isMyWash) return;
+    await sendToEsp32(config.esp32Ip, "off");
     await DB.setMachine({ running: false });
     toast("Machine stopped", "info");
   };
@@ -562,7 +580,7 @@ function AdminDash({ config, setConfig, onLogout, toast }) {
                 {machine?.running ? `🔴 Running — ${machine.userName} (${machine.cycleName})` : "🟢 Idle"}
               </div>
               {machine?.running && (
-                <button onClick={() => { DB.setMachine({ running: false }); toast("Force stopped", "warning"); }} style={{
+                <button onClick={() => { sendToEsp32(config.esp32Ip, "off"); DB.setMachine({ running: false }); toast("Force stopped", "warning"); }} style={{
                   marginTop: 10, padding: "9px 20px", borderRadius: 10, border: "none", cursor: "pointer",
                   background: "#dc2626", color: "#fff", fontWeight: 600, fontSize: 13,
                 }}>⚠ Force Stop</button>
