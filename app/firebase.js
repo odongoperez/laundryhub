@@ -1,10 +1,6 @@
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, set, get, onValue, remove, update } from "firebase/database";
+import { getDatabase, ref, set, get, onValue, remove } from "firebase/database";
 
-// ═══════════════════════════════════════════════════════════════
-//  PASTE YOUR FIREBASE CONFIG HERE (from Firebase Console)
-//  Steps: Firebase Console → Project Settings → Your apps → Config
-// ═══════════════════════════════════════════════════════════════
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FB_API_KEY || "YOUR_API_KEY",
   authDomain: process.env.NEXT_PUBLIC_FB_AUTH_DOMAIN || "YOUR_PROJECT.firebaseapp.com",
@@ -18,86 +14,33 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// ─── Database API ───
-
 export const DB = {
-  // ── Users ──
-  async getUsers() {
-    const snap = await get(ref(db, "users"));
-    return snap.exists() ? Object.values(snap.val()) : [];
-  },
+  async getUsers() { const s = await get(ref(db,"users")); return s.exists()?Object.values(s.val()):[]; },
+  async addUser(user) { await set(ref(db,`users/${user.id}`),user); },
+  async removeUser(id) { await remove(ref(db,`users/${id}`)); },
+  onUsersChange(cb) { return onValue(ref(db,"users"),s=>cb(s.exists()?Object.values(s.val()):[])); },
 
-  async addUser(user) {
-    await set(ref(db, `users/${user.id}`), user);
-  },
+  async getMachine() { const s=await get(ref(db,"machine")); return s.exists()?s.val():{running:false}; },
+  async setMachine(state) { await set(ref(db,"machine"),state); },
+  onMachineChange(cb) { return onValue(ref(db,"machine"),s=>cb(s.exists()?s.val():{running:false})); },
 
-  async removeUser(id) {
-    await remove(ref(db, `users/${id}`));
-  },
+  async getSchedule() { const s=await get(ref(db,"schedule")); if(!s.exists())return[]; return Object.values(s.val()).sort((a,b)=>a.dateTime.localeCompare(b.dateTime)); },
+  async addScheduleEntry(entry) { await set(ref(db,`schedule/${entry.id}`),entry); },
+  async updateScheduleEntry(entry) { await set(ref(db,`schedule/${entry.id}`),entry); },
+  async removeScheduleEntry(id) { await remove(ref(db,`schedule/${id}`)); },
+  async clearSchedule() { await remove(ref(db,"schedule")); },
+  onScheduleChange(cb) { return onValue(ref(db,"schedule"),s=>{ if(!s.exists())return cb([]); cb(Object.values(s.val()).sort((a,b)=>a.dateTime.localeCompare(b.dateTime))); }); },
 
-  onUsersChange(callback) {
-    return onValue(ref(db, "users"), (snap) => {
-      callback(snap.exists() ? Object.values(snap.val()) : []);
-    });
-  },
+  async getConfig() { const s=await get(ref(db,"config")); return s.exists()?s.val():null; },
+  async setConfig(config) { await set(ref(db,"config"),config); },
+  onConfigChange(cb) { return onValue(ref(db,"config"),s=>cb(s.exists()?s.val():null)); },
 
-  // ── Machine State ──
-  async getMachine() {
-    const snap = await get(ref(db, "machine"));
-    return snap.exists() ? snap.val() : { running: false };
-  },
+  // ESP32 status — written by ESP32, read by web app
+  onEsp32Status(cb) { return onValue(ref(db,"esp32_status"),s=>cb(s.exists()?s.val():null)); },
 
-  async setMachine(state) {
-    await set(ref(db, "machine"), state);
-  },
-
-  onMachineChange(callback) {
-    return onValue(ref(db, "machine"), (snap) => {
-      callback(snap.exists() ? snap.val() : { running: false });
-    });
-  },
-
-  // ── Schedule ──
-  async getSchedule() {
-    const snap = await get(ref(db, "schedule"));
-    if (!snap.exists()) return [];
-    return Object.values(snap.val()).sort((a, b) => a.dateTime.localeCompare(b.dateTime));
-  },
-
-  async addScheduleEntry(entry) {
-    await set(ref(db, `schedule/${entry.id}`), entry);
-  },
-
-  async removeScheduleEntry(id) {
-    await remove(ref(db, `schedule/${id}`));
-  },
-
-  async clearSchedule() {
-    await remove(ref(db, "schedule"));
-  },
-
-  onScheduleChange(callback) {
-    return onValue(ref(db, "schedule"), (snap) => {
-      if (!snap.exists()) return callback([]);
-      callback(Object.values(snap.val()).sort((a, b) => a.dateTime.localeCompare(b.dateTime)));
-    });
-  },
-
-  // ── Config ──
-  async getConfig() {
-    const snap = await get(ref(db, "config"));
-    return snap.exists() ? snap.val() : null;
-  },
-
-  async setConfig(config) {
-    await set(ref(db, "config"), config);
-  },
-
-  onConfigChange(callback) {
-    return onValue(ref(db, "config"), (snap) => {
-      callback(snap.exists() ? snap.val() : null);
-    });
-  },
+  // Wash history
+  async addWashRecord(record) { await set(ref(db,`history/${record.id}`),record); },
+  onHistoryChange(cb) { return onValue(ref(db,"history"),s=>{ if(!s.exists())return cb([]); cb(Object.values(s.val()).sort((a,b)=>(b.finishedAt||0)-(a.finishedAt||0))); }); },
 };
 
 export default DB;
