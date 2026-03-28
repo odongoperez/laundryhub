@@ -427,7 +427,15 @@ function AdminDash({cfg,setCfg,onOut,toast}){
 export default function Home(){
   const[s,sS]=useState(null);const[cfg,sCfg]=useState(DEF);const[td,sTD]=useState(null);const[rdy,sRdy]=useState(false);
   const toast=useCallback((m,t)=>sTD({message:m,type:t,key:Date.now()}),[]);
+  
+  // Load session from localStorage on mount
+  useEffect(()=>{try{const saved=localStorage.getItem("lh_session");if(saved)sS(JSON.parse(saved))}catch{}},[]);
+  
+  // Save session to localStorage whenever it changes
+  const login=(u)=>{sS(u);try{localStorage.setItem("lh_session",JSON.stringify(u))}catch{}};
+  const logout=()=>{sS(null);try{localStorage.removeItem("lh_session")}catch{}};
+  
   useEffect(()=>{const u=DB.onConfigChange(c=>{if(c)sCfg(p=>({...DEF,...c}));sRdy(true)});return()=>u()},[]);
   if(!rdy)return<div style={{minHeight:"100vh",background:"#070b12",display:"flex",alignItems:"center",justifyContent:"center"}}><GS p={DEF.primaryColor}/><div style={{textAlign:"center",animation:"pu 1.5s infinite"}}><div style={{fontSize:32}}>🫧</div><div style={{color:"#64748b",marginTop:4,fontSize:12}}>Connecting...</div></div></div>;
-  return<><GS p={cfg.primaryColor}/>{td&&<Toast{...td}onClose={()=>sTD(null)}/>}{!s?<Login cfg={cfg} onLogin={sS}/>:s.role==="admin"?<AdminDash cfg={cfg} setCfg={sCfg} onOut={()=>sS(null)} toast={toast}/>:<UserDash user={s} cfg={cfg} onOut={()=>sS(null)} toast={toast}/>}</>;
+  return<><GS p={cfg.primaryColor}/>{td&&<Toast{...td}onClose={()=>sTD(null)}/>}{!s?<Login cfg={cfg} onLogin={login}/>:s.role==="admin"?<AdminDash cfg={cfg} setCfg={sCfg} onOut={logout} toast={toast}/>:<UserDash user={s} cfg={cfg} onOut={logout} toast={toast}/>}</>;
 }
