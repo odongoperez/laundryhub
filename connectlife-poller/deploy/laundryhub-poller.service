@@ -1,0 +1,30 @@
+[Unit]
+Description=LaundryHub ConnectLife poller
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=laundryhub
+Group=laundryhub
+WorkingDirectory=/opt/laundryhub/connectlife-poller
+EnvironmentFile=/etc/laundryhub/env
+ExecStart=/usr/bin/node src/index.js
+Restart=always
+RestartSec=5
+# Give the process up to 30s to shut down cleanly
+TimeoutStopSec=30
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/laundryhub/connectlife-poller
+
+# Log to journald
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

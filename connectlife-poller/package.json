@@ -1,0 +1,18 @@
+{
+  "name": "laundryhub-connectlife-poller",
+  "version": "1.0.0",
+  "description": "Polls ConnectLife API for Hisense WF3S8043BB3, writes status + relay commands to Firebase RTDB",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node test/fsm.test.js && node test/parser.test.js",
+    "smoke": "node test/smoke.js"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "undici": "^6.21.0"
+  }
+}
